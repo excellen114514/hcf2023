@@ -1,11 +1,13 @@
 // server.js
-
+const os = require('os');
 const http = require('http');
 const fs = require('fs/promises');
 const path = require('path');
 
-// 定义服务器的端口
-const PORT = 3000;
+// 定义服务器的端口与绑定地址（支持环境变量以便在不同环境中覆盖）
+const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
+// 将 HOST 默认为 0.0.0.0 以便在内网中可访问；可通过环境变量覆盖（例如 HOST=127.0.0.1）
+const HOST = process.env.HOST || '0.0.0.0';
 // 静态文件目录
 const PUBLIC_DIR = path.join(__dirname, 'public');
 // API 路径
@@ -17,6 +19,37 @@ const SERVER_SUPPORT = {
     "criticalCH": true,
     "https": false 
 };
+
+function getLocalIPv4() {
+  const networkInterfaces = os.networkInterfaces();
+  
+  for (const interfaceName in networkInterfaces) {
+    const interfaces = networkInterfaces[interfaceName];
+    
+    for (const iface of interfaces) {
+      // 筛选条件：IPv4协议、非内部地址（非回环地址）、非Docker等虚拟接口
+      if (iface.family === 'IPv4' && !iface.internal) {
+        // 优先选择以太网或无线网络接口
+        if (interfaceName.includes('eth') || interfaceName.includes('en') || 
+            interfaceName.includes('wlan') || interfaceName.includes('无线')) {
+          return iface.address;
+        }
+      }
+    }
+  }
+  
+  // 如果没有找到优先接口，返回第一个符合条件的IPv4地址
+  for (const interfaceName in networkInterfaces) {
+    const interfaces = networkInterfaces[interfaceName];
+    for (const iface of interfaces) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  
+  return '127.0.0.1'; // 如果都没找到，返回本地回环地址
+}
 
 function getContentType(filePath) {
     const extname = path.extname(filePath);
@@ -116,6 +149,32 @@ const CRITICAL_CH = 'Sec-CH-UA-Platform, Sec-CH-UA-Mobile';
 async function requestListener(req, res) {
     const url = req.url;
 
+    // --- 请求日志：记录开始时间，并在响应完成后输出方法、URL、状态、耗时、来源 IP、User-Agent ---
+    const start = process.hrtime.bigint();
+    const remoteIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '-';
+    const userAgent = req.headers['user-agent'] || '-';
+
+    // 在响应完成时记录日志
+    res.on('finish', () => {
+        try {
+            const end = process.hrtime.bigint();
+            const durationMs = Number(end - start) / 1e6; // 纳秒转毫秒
+            const log = {
+                time: new Date().toISOString(),
+                method: req.method,
+                url: req.url,
+                status: res.statusCode,
+                duration_ms: durationMs.toFixed(3),
+                remote_ip: remoteIp,
+                user_agent: userAgent
+            };
+            // 简单输出为 JSON，方便日志收集（也可改为更可读的字符串）
+            console.log(JSON.stringify(log));
+        } catch (err) {
+            console.error('Error logging request:', err);
+        }
+    });
+
     // --- 1. 处理 API 请求 ---
     if (url === API_PATH) {
         const { clientHints, detectedOS, isMobile, hasHighEntropyData } = extractClientHints(req);
@@ -178,7 +237,11 @@ async function requestListener(req, res) {
 const server = http.createServer(requestListener);
 
 // 启动服务器
-server.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}/`);
-    console.log(`API endpoint: http://localhost:${PORT}${API_PATH}`);
+server.listen(PORT, HOST, () => {
+    const localIP = getLocalIPv4();
+    console.log(`Server running at:`);
+    console.log(`  Local: http://localhost:${PORT}/`);
+    console.log(`  Network: http://${localIP}:${PORT}/ (bound host=${HOST})`);
+    console.log(`API endpoint: http://${localIP}:${PORT}${API_PATH}`);
+    console.log('Request logs will be written to stdout as JSON lines.');
 });

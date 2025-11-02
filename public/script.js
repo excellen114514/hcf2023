@@ -15,8 +15,59 @@ function addStep({ok, title, detail, weight, targets=[]}){
   $('#steps').appendChild(li);
 }
 
-/* ---------- 字体探测已移除 ---------- */
-// 字体探测函数已被移除
+
+/* ---------- 字体探测函数（补全被移除的部分） ---------- */
+async function detectFonts() {
+  const fontTests = [
+    { name: '-apple-system', targets: ['macos', 'ios', 'ipados'] },
+    { name: 'BlinkMacSystemFont', targets: ['macos'] },
+    { name: 'Segoe UI', targets: ['windows'] },
+    { name: 'Roboto', targets: ['android', 'windows', 'linux'] },
+    { name: 'Ubuntu', targets: ['linux'] },
+    { name: 'Helvetica Neue', targets: ['macos', 'ios', 'ipados'] },
+    { name: 'San Francisco', targets: ['macos', 'ios', 'ipados'] },
+    { name: '.SF NS Text', targets: ['macos'] },
+    { name: '.SF UI Text', targets: ['macos'] },
+    { name: 'Arial', targets: ['windows', 'macos', 'linux'] }
+  ];
+
+  const results = {};
+  const baseFonts = ['monospace', 'sans-serif', 'serif'];
+  
+  // 创建测试元素
+  const testElement = document.createElement('span');
+  testElement.style.position = 'absolute';
+  testElement.style.left = '-9999px';
+  testElement.style.fontSize = '100px';
+  testElement.textContent = 'mmmmmmmmmmlli';
+  document.body.appendChild(testElement);
+
+  try {
+    for (const fontTest of fontTests) {
+      const fontName = fontTest.name;
+      
+      // 设置基准字体尺寸
+      testElement.style.fontFamily = baseFonts.join(', ');
+      const baseWidth = testElement.offsetWidth;
+      const baseHeight = testElement.offsetHeight;
+      
+      // 设置测试字体
+      testElement.style.fontFamily = `${fontName}, ${baseFonts.join(', ')}`;
+      const testWidth = testElement.offsetWidth;
+      const testHeight = testElement.offsetHeight;
+      
+      // 如果尺寸不同，说明字体存在
+      results[fontName] = (testWidth !== baseWidth || testHeight !== baseHeight);
+    }
+  } catch (error) {
+    console.warn('字体检测出错:', error);
+  } finally {
+    // 清理测试元素
+    document.body.removeChild(testElement);
+  }
+
+  return results;
+}
 
 /* ---------- WebGL Renderer/Vendor ---------- */
 function getWebGLInfo(){
@@ -31,11 +82,204 @@ function getWebGLInfo(){
   }catch(e){ return null; }
 }
 
-/* ---------- 媒体编解码能力（功能已移除） ---------- */
-async function checkMediaCapabilities(){
-  // HEVC和VP9检测功能已移除
-  return { hevc:null, vp9:null };
+/* ---------- 媒体编解码能力（补全被移除的部分） ---------- */
+async function checkMediaCapabilities() {
+  const result = { hevc: null, vp9: null, av1: null };
+  
+  try {
+    // HEVC/H.265 检测
+    if ('videoDecodeBenchmarking' in window) {
+      try {
+        const hevcConfig = {
+          codec: 'hev1.1.6.L93.B0',
+          hardwareAcceleration: 'prefer-software'
+        };
+        // 使用更兼容的检测方式
+        result.hevc = await new Promise(resolve => {
+          const video = document.createElement('video');
+          video.canPlayType('video/mp4; codecs="hev1.1.6.L93.B0"').then(canPlay => {
+            resolve(canPlay === 'probably' || canPlay === 'maybe');
+          }).catch(() => resolve(false));
+        });
+      } catch (e) {
+        result.hevc = false;
+      }
+    }
+
+    // VP9 检测
+    try {
+      result.vp9 = await new Promise(resolve => {
+        const video = document.createElement('video');
+        video.canPlayType('video/webm; codecs="vp9"').then(canPlay => {
+          resolve(canPlay === 'probably' || canPlay === 'maybe');
+        }).catch(() => resolve(false));
+      });
+    } catch (e) {
+      result.vp9 = false;
+    }
+
+    // AV1 检测
+    try {
+      result.av1 = await new Promise(resolve => {
+        const video = document.createElement('video');
+        video.canPlayType('video/webm; codecs="av01.0.05M.08"').then(canPlay => {
+          resolve(canPlay === 'probably' || canPlay === 'maybe');
+        }).catch(() => resolve(false));
+      });
+    } catch (e) {
+      result.av1 = false;
+    }
+
+  } catch (error) {
+    console.warn('媒体能力检测出错:', error);
+  }
+
+  return result;
 }
+
+/* ---------- Canvas 初始化函数（补全） ---------- */
+function initCanvas() {
+  // 检查Canvas是否应该被禁用
+  if (shouldDisableCanvas()) {
+    console.log('🚫 Canvas初始化被跳过（已禁用）');
+    return;
+  }
+  
+  console.log('🎨 初始化Canvas...');
+  
+  // 如果WebGL已经初始化，直接返回
+  if (window.webglInitialized) {
+    console.log('✅ WebGL已经初始化');
+    return;
+  }
+  
+  // 调用现有的WebGL初始化函数
+  try {
+    initializeWebGL();
+    console.log('✅ Canvas初始化成功');
+  } catch (error) {
+    console.error('❌ Canvas初始化失败:', error);
+  }
+}
+
+/* ---------- 工具函数：检查是否为苹果设备（补全） ---------- */
+function isAppleDevice() {
+  try {
+    const platform = navigator.platform.toLowerCase();
+    const userAgent = navigator.userAgent.toLowerCase();
+    
+    return (
+      platform.includes('mac') ||
+      platform.includes('iphone') ||
+      platform.includes('ipad') ||
+      platform.includes('ipod') ||
+      userAgent.includes('mac os') ||
+      userAgent.includes('iphone') ||
+      userAgent.includes('ipad')
+    );
+  } catch (error) {
+    console.warn('设备检测出错:', error);
+    return false;
+  }
+}
+
+/* ---------- 工具函数：获取操作系统信息（补全） ---------- */
+function getOSInfo() {
+  const userAgent = navigator.userAgent.toLowerCase();
+  const platform = navigator.platform.toLowerCase();
+  
+  if (userAgent.includes('windows')) return 'windows';
+  if (userAgent.includes('mac os') || platform.includes('mac')) return 'macos';
+  if (userAgent.includes('linux')) return 'linux';
+  if (userAgent.includes('android')) return 'android';
+  if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+    return platform.includes('ipad') ? 'ipados' : 'ios';
+  }
+  
+  return 'unknown';
+}
+
+/* ---------- 工具函数：检查浏览器特性支持（补全） ---------- */
+function checkBrowserFeatures() {
+  const features = {
+    // Web APIs
+    webGL: !!window.WebGLRenderingContext,
+    webGL2: !!window.WebGL2RenderingContext,
+    webAudio: !!window.AudioContext || !!window.webkitAudioContext,
+    webRTC: !!(window.RTCPeerConnection || window.webkitRTCPeerConnection),
+    serviceWorker: 'serviceWorker' in navigator,
+    pushManager: 'PushManager' in window,
+    notifications: 'Notification' in window,
+    
+    // CSS 特性
+    cssGrid: CSS.supports('display', 'grid'),
+    cssFlexbox: CSS.supports('display', 'flex'),
+    backdropFilter: CSS.supports('backdrop-filter', 'blur(10px)'),
+    webkitBackdropFilter: CSS.supports('-webkit-backdrop-filter', 'blur(10px)'),
+    
+    // JS 特性
+    es6Modules: 'noModule' in HTMLScriptElement.prototype,
+    intersectionObserver: 'IntersectionObserver' in window,
+    resizeObserver: 'ResizeObserver' in window,
+    mutationObserver: 'MutationObserver' in window
+  };
+  
+  return features;
+}
+
+/* ---------- 性能检测函数（补全） ---------- */
+async function measurePerformance() {
+  const measures = {};
+  
+  // 内存使用情况（如果可用）
+  if (performance.memory) {
+    measures.memory = {
+      used: performance.memory.usedJSHeapSize,
+      total: performance.memory.totalJSHeapSize,
+      limit: performance.memory.jsHeapSizeLimit
+    };
+  }
+  
+  // 网络信息（如果可用）
+  if (navigator.connection) {
+    measures.connection = {
+      effectiveType: navigator.connection.effectiveType,
+      downlink: navigator.connection.downlink,
+      rtt: navigator.connection.rtt,
+      saveData: navigator.connection.saveData
+    };
+  }
+  
+  // 设备像素比
+  measures.devicePixelRatio = window.devicePixelRatio || 1;
+  
+  // 屏幕信息
+  measures.screen = {
+    width: screen.width,
+    height: screen.height,
+    availWidth: screen.availWidth,
+    availHeight: screen.availHeight,
+    colorDepth: screen.colorDepth,
+    pixelDepth: screen.pixelDepth
+  };
+  
+  // 视口信息
+  measures.viewport = {
+    width: window.innerWidth,
+    height: window.innerHeight
+  };
+  
+  return measures;
+}
+
+// 将这些函数暴露到全局作用域
+window.detectFonts = detectFonts;
+window.checkMediaCapabilities = checkMediaCapabilities;
+window.initCanvas = initCanvas;
+window.isAppleDevice = isAppleDevice;
+window.getOSInfo = getOSInfo;
+window.checkBrowserFeatures = checkBrowserFeatures;
+window.measurePerformance = measurePerformance;
 
 /* ---------- NFC能力检测 ---------- */
 async function checkNFCCapabilities(){

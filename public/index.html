@@ -70,6 +70,641 @@
         </div>
     </main>
 
+  <!-- 在 </main> 标签前添加这个补充功能区域 -->
+<section class="info-card" aria-labelledby="tools-heading" style="margin-top: 24px;">
+    <header class="card-header">
+        <h2 id="tools-heading" class="card-title">系统工具</h2>
+    </header>
+    <div class="card-body">
+        <div class="btn-group">
+            <button id="fontDetectBtn" class="btn secondary">
+                🎯 字体检测
+            </button>
+            <button id="mediaCapBtn" class="btn secondary">
+                📺 媒体能力
+            </button>
+            <button id="perfMeasureBtn" class="btn secondary">
+                ⚡ 性能测试
+            </button>
+            <button id="browserFeatureBtn" class="btn secondary">
+                🌐 浏览器特性
+            </button>
+            <button id="canvasToggleBtn" class="btn secondary">
+                🎨 Canvas控制
+            </button>
+            <button id="osInfoBtn" class="btn secondary">
+                💻 系统信息
+            </button>
+        </div>
+        
+        <!-- 结果显示区域 -->
+        <div id="toolsResults" style="margin-top: 16px; display: none;">
+            <div class="status-indicator">
+                <span id="toolsStatus">工具结果将显示在这里...</span>
+            </div>
+            <pre id="toolsOutput" style="background: var(--fill-primary); padding: 12px; border-radius: 8px; font-size: 12px; max-height: 300px; overflow: auto; margin-top: 12px; display: none;"></pre>
+        </div>
+    </div>
+</section>
+
+
+<!-- 在现有的工具按钮后添加 -->
+<section class="info-card" aria-labelledby="webgl-control-heading" style="margin-top: 24px;">
+    <header class="card-header">
+        <h2 id="webgl-control-heading" class="card-title">WebGL 控制</h2>
+    </header>
+    <div class="card-body">
+        <div class="btn-group">
+            <button id="webglEnableBtn" class="btn secondary">
+                🎯 启用 WebGL
+            </button>
+            <button id="webglDisableBtn" class="btn secondary">
+                🚫 禁用 WebGL
+            </button>
+            <button id="webglStatusBtn" class="btn secondary">
+                🔍 状态检测
+            </button>
+            <button id="webglToggleBtn" class="btn secondary">
+                🔄 切换状态
+            </button>
+        </div>
+        
+        <!-- WebGL 状态显示 -->
+        <div id="webglStatus" style="margin-top: 16px;">
+            <div class="status-indicator">
+                <span id="webglStatusText">WebGL 状态: 检测中...</span>
+            </div>
+            <div id="webglDetails" style="margin-top: 8px; font-size: 12px; color: var(--label-tertiary); display: none;"></div>
+        </div>
+
+        <!-- WebGL 控制结果 -->
+        <div id="webglResults" style="margin-top: 16px; display: none;">
+            <div class="status-indicator">
+                <span id="webglResultText">WebGL 控制结果将显示在这里...</span>
+            </div>
+            <pre id="webglOutput" style="background: var(--fill-primary); padding: 12px; border-radius: 8px; font-size: 12px; max-height: 200px; overflow: auto; margin-top: 12px; display: none;"></pre>
+        </div>
+    </div>
+</section>
+
+<script>
+// 工具按钮事件监听
+document.addEventListener('DOMContentLoaded', function() {
+    // 字体检测
+    document.getElementById('fontDetectBtn').addEventListener('click', async function() {
+        const results = await detectFonts();
+        showToolsResult('字体检测结果', results);
+    });
+
+    // 媒体能力检测
+    document.getElementById('mediaCapBtn').addEventListener('click', async function() {
+        const results = await checkMediaCapabilities();
+        showToolsResult('媒体编解码能力', results);
+    });
+
+    // 性能测试
+    document.getElementById('perfMeasureBtn').addEventListener('click', async function() {
+        const results = await measurePerformance();
+        showToolsResult('性能特征', results);
+    });
+
+    // 浏览器特性
+    document.getElementById('browserFeatureBtn').addEventListener('click', function() {
+        const results = checkBrowserFeatures();
+        showToolsResult('浏览器特性支持', results);
+    });
+
+    // Canvas控制
+    document.getElementById('canvasToggleBtn').addEventListener('click', function() {
+        const currentStatus = window.getCanvasStatus();
+        const newStatus = window.toggleCanvas();
+        
+        showToolsResult('Canvas状态控制', {
+            当前状态: currentStatus.enabled ? '启用' : '禁用',
+            新状态: newStatus ? '启用' : '禁用',
+            详细信息: currentStatus
+        });
+        
+        // 更新按钮文本
+        this.textContent = newStatus ? '🎨 禁用Canvas' : '🎨 启用Canvas';
+    });
+
+    // 系统信息
+    document.getElementById('osInfoBtn').addEventListener('click', function() {
+        const results = {
+            操作系统: getOSInfo(),
+            苹果设备: isAppleDevice(),
+            苹果平台: isApplePlatform(),
+            用户代理: navigator.userAgent,
+            平台: navigator.platform,
+            语言: navigator.language,
+            时区: Intl.DateTimeFormat().resolvedOptions().timeZone
+        };
+        showToolsResult('系统环境信息', results);
+    });
+});
+
+// 显示工具结果
+function showToolsResult(title, data) {
+    const toolsResults = document.getElementById('toolsResults');
+    const toolsStatus = document.getElementById('toolsStatus');
+    const toolsOutput = document.getElementById('toolsOutput');
+    
+    toolsResults.style.display = 'block';
+    toolsStatus.textContent = title;
+    toolsOutput.style.display = 'block';
+    toolsOutput.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+}
+
+// 初始化Canvas按钮文本
+document.addEventListener('DOMContentLoaded', function() {
+    const canvasStatus = window.getCanvasStatus();
+    document.getElementById('canvasToggleBtn').textContent = 
+        canvasStatus.enabled ? '🎨 禁用Canvas' : '🎨 启用Canvas';
+});
+</script>
+
+
+<script>
+/* ---------- 完整的工具按钮设置函数 ---------- */
+function setupToolButtons() {
+  console.log('🔧 设置工具按钮事件监听...');
+
+  // 字体检测按钮
+  const fontDetectBtn = document.getElementById('fontDetectBtn');
+  if (fontDetectBtn) {
+    fontDetectBtn.addEventListener('click', async function() {
+      console.log('🎯 开始手动字体检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = await detectFonts();
+        const detectedFonts = Object.entries(results)
+          .filter(([font, exists]) => exists)
+          .map(([font]) => font);
+        
+        const detectedCount = detectedFonts.length;
+        const detail = `共检测 ${Object.keys(results).length} 种字体，发现 ${detectedCount} 种：${detectedFonts.join(', ')}`;
+        
+        showToolsResult('字体检测结果', {
+          总检测字体数: Object.keys(results).length,
+          检测到字体数: detectedCount,
+          检测到的字体: detectedFonts,
+          原始数据: results
+        });
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: '手动字体检测',
+          detail: detail,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log(`✅ 字体检测完成: 发现 ${detectedCount} 种字体`);
+      } catch (error) {
+        console.error('❌ 字体检测失败:', error);
+        showToolsResult('字体检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动字体检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // 媒体能力检测按钮
+  const mediaCapBtn = document.getElementById('mediaCapBtn');
+  if (mediaCapBtn) {
+    mediaCapBtn.addEventListener('click', async function() {
+      console.log('📺 开始手动媒体能力检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = await checkMediaCapabilities();
+        const detail = `HEVC: ${results.hevc ? '✅' : '❌'}, VP9: ${results.vp9 ? '✅' : '❌'}, AV1: ${results.av1 ? '✅' : '❌'}`;
+        
+        showToolsResult('媒体编解码能力', {
+          HEVC_H265支持: results.hevc ? '支持' : '不支持',
+          VP9支持: results.vp9 ? '支持' : '不支持', 
+          AV1支持: results.av1 ? '支持' : '不支持',
+          详细结果: results
+        });
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: '手动媒体能力检测',
+          detail: detail,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log('✅ 媒体能力检测完成:', results);
+      } catch (error) {
+        console.error('❌ 媒体能力检测失败:', error);
+        showToolsResult('媒体能力检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动媒体能力检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // 性能测试按钮
+  const perfMeasureBtn = document.getElementById('perfMeasureBtn');
+  if (perfMeasureBtn) {
+    perfMeasureBtn.addEventListener('click', async function() {
+      console.log('⚡ 开始手动性能测试...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = await measurePerformance();
+        const memoryInfo = results.memory ? {
+          已使用内存: `${(results.memory.used / 1024 / 1024).toFixed(1)} MB`,
+          总内存: `${(results.memory.total / 1024 / 1024).toFixed(1)} MB`,
+          内存限制: `${(results.memory.limit / 1024 / 1024).toFixed(1)} MB`
+        } : '不可用';
+        
+        const networkInfo = results.connection ? {
+          网络类型: results.connection.effectiveType,
+          下行速度: `${results.connection.downlink} Mbps`,
+          往返延迟: `${results.connection.rtt} ms`,
+          节省数据模式: results.connection.saveData ? '开启' : '关闭'
+        } : '不可用';
+        
+        showToolsResult('性能特征检测', {
+          内存信息: memoryInfo,
+          网络信息: networkInfo,
+          设备像素比: results.devicePixelRatio,
+          屏幕信息: results.screen,
+          视口信息: results.viewport
+        });
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: '手动性能测试',
+          detail: `设备像素比: ${results.devicePixelRatio}, 屏幕: ${results.screen.width}×${results.screen.height}`,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log('✅ 性能测试完成');
+      } catch (error) {
+        console.error('❌ 性能测试失败:', error);
+        showToolsResult('性能测试失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动性能测试失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // 浏览器特性检测按钮
+  const browserFeatureBtn = document.getElementById('browserFeatureBtn');
+  if (browserFeatureBtn) {
+    browserFeatureBtn.addEventListener('click', function() {
+      console.log('🌐 开始手动浏览器特性检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = checkBrowserFeatures();
+        const supportedFeatures = Object.entries(results)
+          .filter(([name, supported]) => supported)
+          .map(([name]) => name);
+        
+        const unsupportedFeatures = Object.entries(results)
+          .filter(([name, supported]) => !supported)
+          .map(([name]) => name);
+        
+        const detail = `支持 ${supportedFeatures.length} 个特性，不支持 ${unsupportedFeatures.length} 个特性`;
+        
+        showToolsResult('浏览器特性支持', {
+          支持的特性数: supportedFeatures.length,
+          不支持的特性数: unsupportedFeatures.length,
+          支持的特性列表: supportedFeatures,
+          不支持的特性列表: unsupportedFeatures,
+          完整特性表: results
+        });
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: '手动浏览器特性检测',
+          detail: detail,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log(`✅ 浏览器特性检测完成: 支持 ${supportedFeatures.length} 个特性`);
+      } catch (error) {
+        console.error('❌ 浏览器特性检测失败:', error);
+        showToolsResult('浏览器特性检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动浏览器特性检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // 系统信息检测按钮
+  const osInfoBtn = document.getElementById('osInfoBtn');
+  if (osInfoBtn) {
+    osInfoBtn.addEventListener('click', function() {
+      console.log('💻 开始手动系统信息检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = {
+          操作系统: getOSInfo(),
+          苹果设备: isAppleDevice(),
+          苹果平台: isApplePlatform(),
+          用户代理: navigator.userAgent,
+          平台: navigator.platform,
+          语言: navigator.language,
+          时区: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          CPU核心数: navigator.hardwareConcurrency || '未知',
+          设备内存: navigator.deviceMemory || '未知',
+          最大触点数: navigator.maxTouchPoints || 0,
+          屏幕分辨率: `${screen.width} × ${screen.height}`,
+          色彩深度: screen.colorDepth + '位',
+          像素密度: window.devicePixelRatio || 1,
+          在线状态: navigator.onLine ? '在线' : '离线',
+          Cookie启用: navigator.cookieEnabled ? '是' : '否',
+          Java启用: navigator.javaEnabled ? '是' : '否'
+        };
+        
+        showToolsResult('系统环境信息', results);
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: '手动系统信息检测',
+          detail: `操作系统: ${results.操作系统}, 平台: ${results.平台}, CPU核心: ${results.CPU核心数}`,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log('✅ 系统信息检测完成:', results.操作系统);
+      } catch (error) {
+        console.error('❌ 系统信息检测失败:', error);
+        showToolsResult('系统信息检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动系统信息检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // Canvas控制按钮
+  const canvasToggleBtn = document.getElementById('canvasToggleBtn');
+  if (canvasToggleBtn) {
+    canvasToggleBtn.addEventListener('click', function() {
+      console.log('🎨 切换Canvas状态...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const currentStatus = window.getCanvasStatus();
+        const newStatus = window.toggleCanvas();
+        
+        const statusInfo = {
+          当前状态: currentStatus.enabled ? '启用' : '禁用',
+          新状态: newStatus ? '启用' : '禁用',
+          支持状态: currentStatus.supported ? '支持' : '不支持',
+          手动覆盖: currentStatus.manualOverride ? '是' : '否'
+        };
+        
+        showToolsResult('Canvas状态控制', statusInfo);
+        
+        // 添加到检测步骤
+        addStep({
+          ok: true,
+          title: 'Canvas状态切换',
+          detail: `从 ${statusInfo.当前状态} 切换到 ${statusInfo.新状态}`,
+          weight: 0,
+          targets: []
+        });
+        
+        // 更新按钮文本
+        this.textContent = newStatus ? '🎨 禁用Canvas' : '🎨 启用Canvas';
+        
+        console.log(`✅ Canvas状态切换: ${statusInfo.当前状态} → ${statusInfo.新状态}`);
+      } catch (error) {
+        console.error('❌ Canvas状态切换失败:', error);
+        showToolsResult('Canvas状态切换失败', error.message);
+        addStep({
+          ok: false,
+          title: 'Canvas状态切换失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // NFC检测按钮（新增）
+  const nfcDetectBtn = document.getElementById('nfcDetectBtn');
+  if (nfcDetectBtn) {
+    nfcDetectBtn.addEventListener('click', async function() {
+      console.log('📱 开始手动NFC检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const results = await checkNFCCapabilities();
+        const isSecureContext = window.isSecureContext || location.protocol === 'https:';
+        
+        const nfcInfo = {
+          API支持: results.hasAPI ? '支持' : '不支持',
+          API类型: results.apiType || '无',
+          扫描功能: results.canScan ? '可用' : '不可用',
+          安全上下文: isSecureContext ? '是' : '否',
+          错误信息: results.error || '无'
+        };
+        
+        showToolsResult('NFC能力检测', nfcInfo);
+        
+        // 添加到检测步骤
+        addStep({
+          ok: results.hasAPI,
+          title: '手动NFC检测',
+          detail: `API支持: ${nfcInfo.API支持}, 类型: ${nfcInfo.API类型}, 扫描: ${nfcInfo.扫描功能}`,
+          weight: results.hasAPI ? 2 : 0,
+          targets: results.hasAPI ? ['android'] : []
+        });
+        
+        console.log(`✅ NFC检测完成: ${nfcInfo.API支持}`);
+      } catch (error) {
+        console.error('❌ NFC检测失败:', error);
+        showToolsResult('NFC检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动NFC检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  // WebGL详细检测按钮（新增）
+  const webglDetailBtn = document.getElementById('webglDetailBtn');
+  if (webglDetailBtn) {
+    webglDetailBtn.addEventListener('click', function() {
+      console.log('🔍 开始手动WebGL详细检测...');
+      this.classList.add('loading');
+      this.disabled = true;
+      
+      try {
+        const webglStatus = window.webglManager ? window.webglManager.getStatus() : {
+          supported: false,
+          enabled: false,
+          initialized: false,
+          manualOverride: false
+        };
+
+        // 获取 WebGL 详细信息
+        let webglDetails = {};
+        if (webglStatus.supported) {
+          try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+              const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+              webglDetails = {
+                渲染器: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '未知',
+                供应商: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '未知',
+                版本: gl.getParameter(gl.VERSION),
+                着色器版本: gl.getParameter(gl.SHADING_LANGUAGE_VERSION),
+                抗锯齿: gl.getContextAttributes().antialias ? '启用' : '禁用',
+                深度缓冲: gl.getContextAttributes().depth ? '启用' : '禁用',
+                模板缓冲: gl.getContextAttributes().stencil ? '启用' : '禁用'
+              };
+            }
+          } catch (error) {
+            webglDetails.错误 = error.message;
+          }
+        }
+
+        const webglInfo = {
+          基础状态: webglStatus,
+          详细信息: webglDetails,
+          支持扩展: webglStatus.supported ? this.getWebGLExtensions() : []
+        };
+        
+        showToolsResult('WebGL详细检测', webglInfo);
+        
+        // 添加到检测步骤
+        addStep({
+          ok: webglStatus.supported,
+          title: '手动WebGL详细检测',
+          detail: `支持: ${webglStatus.supported ? '是' : '否'}, 渲染器: ${webglDetails.渲染器 || '未知'}`,
+          weight: 0,
+          targets: []
+        });
+        
+        console.log('✅ WebGL详细检测完成');
+      } catch (error) {
+        console.error('❌ WebGL详细检测失败:', error);
+        showToolsResult('WebGL详细检测失败', error.message);
+        addStep({
+          ok: false,
+          title: '手动WebGL详细检测失败',
+          detail: error.message,
+          weight: 0,
+          targets: []
+        });
+      } finally {
+        this.classList.remove('loading');
+        this.disabled = false;
+      }
+    });
+  }
+
+  console.log('✅ 所有工具按钮事件监听设置完成');
+}
+
+// 获取 WebGL 扩展列表（辅助函数）
+function getWebGLExtensions() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      const extensions = gl.getSupportedExtensions();
+      return extensions || [];
+    }
+  } catch (error) {
+    console.error('获取 WebGL 扩展失败:', error);
+  }
+  return [];
+}
+
+// 在DOM加载完成后设置工具按钮
+document.addEventListener('DOMContentLoaded', function() {
+  // 等待页面完全加载后设置工具按钮
+  setTimeout(() => {
+    setupToolButtons();
+    
+    // 初始化Canvas按钮文本
+    const canvasStatus = window.getCanvasStatus ? window.getCanvasStatus() : { enabled: true };
+    const canvasToggleBtn = document.getElementById('canvasToggleBtn');
+    if (canvasToggleBtn) {
+      canvasToggleBtn.textContent = canvasStatus.enabled ? '🎨 禁用Canvas' : '🎨 启用Canvas';
+    }
+  }, 100);
+});
+</script>
+    
     <!-- 弹幕雨容器 -->
     <div id="danmu-container" aria-hidden="true"></div>
 

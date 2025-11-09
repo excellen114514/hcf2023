@@ -12,7 +12,7 @@ const HOST = process.env.HOST || '0.0.0.0';
 const PUBLIC_DIR = path.join(__dirname, 'public');
 // API 路径
 const API_PATH = '/api/client-hints';
-
+const WEBGL_API_PATH = '/api/webgl-control';
 const SERVER_SUPPORT = {
     "acceptCH": true,
     "permissionsPolicy": true,
@@ -175,6 +175,63 @@ async function requestListener(req, res) {
         }
     });
 
+     // --- 1.1 处理 WebGL 控制 API 请求 ---
+    if (url === WEBGL_API_PATH && req.method === 'POST') {
+        let body = '';
+        req.on('data', chunk => {
+            body += chunk.toString();
+        });
+        
+        req.on('end', () => {
+            try {
+                const data = JSON.parse(body);
+                const { action, enabled } = data;
+                
+                // 记录 WebGL 控制请求
+                console.log('WebGL control request:', { action, enabled, remoteIp, userAgent });
+                
+                const responseData = {
+                    "success": true,
+                    "action": action,
+                    "enabled": enabled,
+                    "timestamp": new Date().toISOString(),
+                    "message": `WebGL ${enabled ? 'enabled' : 'disabled'} successfully`
+                };
+
+                res.writeHead(200, { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                    'Access-Control-Allow-Headers': 'Content-Type'
+                });
+                
+                res.end(JSON.stringify(responseData, null, 2));
+            } catch (error) {
+                console.error('Error processing WebGL control request:', error);
+                res.writeHead(400, { 
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify({
+                    "success": false,
+                    "error": "Invalid JSON payload"
+                }));
+            }
+        });
+        return;
+    }
+
+    // --- 1.2 处理 WebGL 控制 OPTIONS 请求 (CORS) ---
+    if (url === WEBGL_API_PATH && req.method === 'OPTIONS') {
+        res.writeHead(200, {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'POST, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type'
+        });
+        res.end();
+        return;
+    }
+
     // --- 1. 处理 API 请求 ---
     if (url === API_PATH) {
         const { clientHints, detectedOS, isMobile, hasHighEntropyData } = extractClientHints(req);
@@ -242,6 +299,8 @@ server.listen(PORT, HOST, () => {
     console.log(`Server running at:`);
     console.log(`  Local: http://localhost:${PORT}/`);
     console.log(`  Network: http://${localIP}:${PORT}/ (bound host=${HOST})`);
-    console.log(`API endpoint: http://${localIP}:${PORT}${API_PATH}`);
+    console.log(`API endpoints:`);
+    console.log(`  Client Hints: http://${localIP}:${PORT}${API_PATH}`);
+    console.log(`  WebGL Control: http://${localIP}:${PORT}${WEBGL_API_PATH}`);
     console.log('Request logs will be written to stdout as JSON lines.');
 });

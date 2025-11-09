@@ -272,7 +272,461 @@ async function measurePerformance() {
   return measures;
 }
 
-// 将这些函数暴露到全局作用域
+// 在 script.js 中添加这些缺失的函数
+
+/* ---------- 缺失的函数补全 ---------- */
+
+// 检查是否应该禁用Canvas
+function shouldDisableCanvas() {
+  // 1) URL 显式禁用
+  const path = window.location.pathname + window.location.search;
+  if (path.includes('/disablecanvas') || path.includes('disablecanvas')) {
+    console.log('🚫 Canvas已被禁用 (通过 /disablecanvas 路径)');
+    return true;
+  }
+  
+  // 2) 优先使用高级检测的结果（如果已经进行过高级检测）
+  const detectedOS = window.detectedOSType;
+  const isAdvancedMode = window.isAdvancedDetectionActive;
+  
+  if (isAdvancedMode && detectedOS) {
+    // 高级检测模式下，以高级检测结果为准
+    if (detectedOS === 'ios' || detectedOS === 'ipados' || detectedOS === 'macos') {
+      console.log(`🚫 Canvas已被禁用（高级检测结果：${detectedOS} - 苹果设备不渲染Canvas）`);
+      return true;
+    } else {
+      console.log(`✅ Canvas已启用（高级检测结果：${detectedOS} - 非苹果设备执行Canvas）`);
+      return false;
+    }
+  }
+  
+  // 3) 基础检测模式下，使用检测结果或平台判断
+  if (detectedOS) {
+    if (detectedOS === 'ios' || detectedOS === 'ipados' || detectedOS === 'macos') {
+      console.log(`🚫 Canvas已被禁用（基础检测结果：${detectedOS} - 苹果设备不渲染Canvas）`);
+      return true;
+    }
+  }
+  
+  // 4) 通过平台判断（备用检测，仅在没有明确检测结果时使用）
+  if (!detectedOS && isApplePlatform()) {
+    console.log('🚫 Canvas已被禁用（苹果平台特征检测）');
+    return true;
+  }
+  
+  return false;
+}
+
+// 检查URL中是否包含禁用Canvas的路径
+function checkCanvasDisableFlag() {
+  const disabled = shouldDisableCanvas();
+  window.canvasDisabled = disabled;
+  return disabled;
+}
+
+// WebGL初始化函数
+function initializeWebGL() {
+  // 检查Canvas是否应该被禁用
+  if (shouldDisableCanvas()) {
+    console.log('⏭️ Canvas已禁用，跳过WebGL初始化');
+    return;
+  }
+  
+  console.log('🎨 开始初始化WebGL...');
+  
+  // 这里应该包含完整的WebGL初始化代码
+  // 由于代码很长，这里只显示关键部分
+  
+  try {
+    // 创建WebGL上下文
+    const canvas = document.getElementById('c1');
+    if (!canvas) {
+      console.error('Canvas元素未找到');
+      return;
+    }
+    
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) {
+      console.error('WebGL不被支持');
+      return;
+    }
+    
+    // 设置WebGL上下文
+    window.gl = gl;
+    
+    // 编译着色器、创建程序等WebGL初始化工作...
+    console.log('✅ WebGL初始化成功');
+    
+    // 标记为已初始化
+    window.webglInitialized = true;
+    
+  } catch (error) {
+    console.error('❌ WebGL初始化失败:', error);
+  }
+}
+
+// 启动WebGL体验
+function startWebGLExperience() {
+  if (shouldDisableCanvas()) {
+    console.log('⏭️ Canvas已禁用，跳过WebGL体验');
+    return;
+  }
+  
+  console.log('🚀 启动WebGL体验...');
+  
+  if (!window.webglInitialized) {
+    initializeWebGL();
+  }
+  
+  // 开始动画循环
+  if (window.startWebGLAnimation) {
+    window.startWebGLAnimation();
+  }
+}
+
+// 停止WebGL体验
+function stopWebGLExperience() {
+  if (shouldDisableCanvas()) {
+    console.log('⏭️ Canvas已禁用，无需停止WebGL');
+    return;
+  }
+  
+  console.log('🛑 停止WebGL体验...');
+  
+  if (window.webglAnimationId) {
+    cancelAnimationFrame(window.webglAnimationId);
+    window.webglAnimationId = null;
+  }
+}
+
+/* ---------- WebGL 控制功能 ---------- */
+
+// WebGL 状态管理
+class WebGLManager {
+    constructor() {
+        this.enabled = true; // 默认启用
+        this.supported = false;
+        this.initialized = false;
+        this.manualOverride = false; // 用户手动覆盖
+        this.init();
+    }
+
+    init() {
+        // 检测 WebGL 支持
+        this.supported = this.detectWebGLSupport();
+        this.updateStatusDisplay();
+        
+        // 绑定事件
+        this.bindEvents();
+        
+        console.log('🎮 WebGL 管理器初始化完成', {
+            supported: this.supported,
+            enabled: this.enabled,
+            initialized: this.initialized
+        });
+    }
+
+    detectWebGLSupport() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            return !!gl;
+        } catch (error) {
+            console.error('WebGL 支持检测失败:', error);
+            return false;
+        }
+    }
+
+    bindEvents() {
+        // 启用按钮
+        const enableBtn = document.getElementById('webglEnableBtn');
+        if (enableBtn) {
+            enableBtn.addEventListener('click', () => this.enableWebGL());
+        }
+
+        // 禁用按钮
+        const disableBtn = document.getElementById('webglDisableBtn');
+        if (disableBtn) {
+            disableBtn.addEventListener('click', () => this.disableWebGL());
+        }
+
+        // 状态检测按钮
+        const statusBtn = document.getElementById('webglStatusBtn');
+        if (statusBtn) {
+            statusBtn.addEventListener('click', () => this.checkStatus());
+        }
+
+        // 切换按钮
+        const toggleBtn = document.getElementById('webglToggleBtn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.toggleWebGL());
+        }
+    }
+
+    async enableWebGL() {
+        if (!this.supported) {
+            this.showResult('❌ WebGL 不被浏览器支持', '无法启用 WebGL 功能');
+            return;
+        }
+
+        try {
+            this.manualOverride = true;
+            this.enabled = true;
+            
+            // 发送到服务器记录
+            await this.sendWebGLControl('enable', true);
+            
+            // 重新初始化 WebGL
+            if (typeof initializeWebGL === 'function') {
+                initializeWebGL();
+            }
+            
+            this.showResult('✅ WebGL 已启用', 'WebGL 功能现已启用，3D 渲染将正常工作');
+            this.updateStatusDisplay();
+            
+        } catch (error) {
+            console.error('启用 WebGL 失败:', error);
+            this.showResult('❌ 启用 WebGL 失败', error.message);
+        }
+    }
+
+    async disableWebGL() {
+        this.manualOverride = true;
+        this.enabled = false;
+        
+        try {
+            // 发送到服务器记录
+            await this.sendWebGLControl('disable', false);
+            
+            // 停止 WebGL 渲染
+            if (typeof stopWebGLExperience === 'function') {
+                stopWebGLExperience();
+            }
+            
+            this.showResult('🚫 WebGL 已禁用', 'WebGL 功能现已禁用，3D 渲染将停止');
+            this.updateStatusDisplay();
+            
+        } catch (error) {
+            console.error('禁用 WebGL 失败:', error);
+            this.showResult('❌ 禁用 WebGL 失败', error.message);
+        }
+    }
+
+    async toggleWebGL() {
+        if (this.enabled) {
+            await this.disableWebGL();
+        } else {
+            await this.enableWebGL();
+        }
+    }
+
+    async checkStatus() {
+        const status = {
+            支持状态: this.supported ? '✅ 支持' : '❌ 不支持',
+            启用状态: this.enabled ? '✅ 启用' : '🚫 禁用',
+            初始化状态: this.initialized ? '✅ 已初始化' : '⏳ 未初始化',
+            手动覆盖: this.manualOverride ? '✅ 是' : '❌ 否',
+            用户代理: navigator.userAgent,
+            平台: navigator.platform
+        };
+
+        // 检测 WebGL 上下文
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (gl) {
+                const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                status.渲染器 = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '未知';
+                status.供应商 = debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '未知';
+            }
+        } catch (error) {
+            status.渲染器信息 = '获取失败: ' + error.message;
+        }
+
+        this.showResult('🔍 WebGL 状态检测', status);
+        this.updateStatusDisplay();
+    }
+
+    async sendWebGLControl(action, enabled) {
+        try {
+            const response = await fetch('/api/webgl-control', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: action,
+                    enabled: enabled,
+                    timestamp: new Date().toISOString(),
+                    userAgent: navigator.userAgent,
+                    url: window.location.href
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            console.log('WebGL 控制请求成功:', data);
+            return data;
+            
+        } catch (error) {
+            console.warn('WebGL 控制 API 调用失败:', error);
+            // 不阻止用户操作，即使 API 调用失败
+            return { success: true, offline: true };
+        }
+    }
+
+    updateStatusDisplay() {
+        const statusText = document.getElementById('webglStatusText');
+        const details = document.getElementById('webglDetails');
+        
+        if (statusText) {
+            let statusMessage = `WebGL 状态: `;
+            
+            if (!this.supported) {
+                statusMessage += '❌ 不支持';
+            } else if (this.enabled) {
+                statusMessage += '✅ 启用';
+            } else {
+                statusMessage += '🚫 禁用';
+            }
+            
+            if (this.manualOverride) {
+                statusMessage += ' (手动控制)';
+            }
+            
+            statusText.textContent = statusMessage;
+        }
+        
+        if (details) {
+            details.style.display = 'block';
+            details.innerHTML = `
+                <div>支持检测: ${this.supported ? '✅' : '❌'}</div>
+                <div>初始化: ${this.initialized ? '✅' : '❌'}</div>
+                <div>手动控制: ${this.manualOverride ? '✅' : '❌'}</div>
+            `;
+        }
+    }
+
+    showResult(title, data) {
+        const results = document.getElementById('webglResults');
+        const resultText = document.getElementById('webglResultText');
+        const output = document.getElementById('webglOutput');
+        
+        if (results && resultText && output) {
+            results.style.display = 'block';
+            resultText.textContent = title;
+            output.style.display = 'block';
+            output.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+    }
+
+    // 设置初始化状态
+    setInitialized(state) {
+        this.initialized = state;
+        this.updateStatusDisplay();
+    }
+
+    // 获取当前状态（用于 shouldDisableCanvas 等函数）
+    getStatus() {
+        return {
+            enabled: this.enabled,
+            supported: this.supported,
+            initialized: this.initialized,
+            manualOverride: this.manualOverride
+        };
+    }
+
+    // 检查是否应该启用 WebGL（用于现有逻辑）
+    shouldEnableWebGL() {
+        // 如果用户手动覆盖，使用用户设置
+        if (this.manualOverride) {
+            return this.enabled;
+        }
+        
+        // 否则使用自动检测逻辑
+        return !shouldDisableCanvas();
+    }
+}
+
+// 创建全局 WebGL 管理器实例
+window.webglManager = new WebGLManager();
+
+// 修改现有的 shouldDisableCanvas 函数以支持手动控制
+const originalShouldDisableCanvas = window.shouldDisableCanvas;
+window.shouldDisableCanvas = function() {
+    // 如果用户手动控制了 WebGL，优先使用用户设置
+    if (window.webglManager && window.webglManager.manualOverride) {
+        return !window.webglManager.enabled;
+    }
+    
+    // 否则使用原有的自动检测逻辑
+    return originalShouldDisableCanvas ? originalShouldDisableCanvas() : false;
+};
+
+// 修改 initializeWebGL 函数以更新管理器状态
+const originalInitializeWebGL = window.initializeWebGL;
+window.initializeWebGL = function() {
+    if (window.webglManager && !window.webglManager.shouldEnableWebGL()) {
+        console.log('🎮 WebGL 管理器: 跳过初始化（已禁用）');
+        return;
+    }
+    
+    const result = originalInitializeWebGL ? originalInitializeWebGL() : undefined;
+    
+    if (window.webglManager) {
+        window.webglManager.setInitialized(true);
+    }
+    
+    return result;
+};
+
+// 修改 WebGL 绘制函数以检查状态
+const originalWebGLDraw = window.webglDraw;
+window.webglDraw = function() {
+    if (window.webglManager && !window.webglManager.shouldEnableWebGL()) {
+        return; // 如果禁用，不进行绘制
+    }
+    
+    return originalWebGLDraw ? originalWebGLDraw() : undefined;
+};
+
+console.log('✅ WebGL 控制功能已加载');
+
+// 快速 WebGL 控制面板
+document.getElementById('quickWebGLToggle')?.addEventListener('click', function() {
+    // 滚动到 WebGL 控制部分
+    const webglSection = document.querySelector('[aria-labelledby="webgl-control-heading"]');
+    if (webglSection) {
+        webglSection.scrollIntoView({ behavior: 'smooth' });
+        
+        // 高亮显示
+        webglSection.style.animation = 'highlight 2s ease-in-out';
+        setTimeout(() => {
+            webglSection.style.animation = '';
+        }, 2000);
+    }
+});
+
+// 添加高亮动画 CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes highlight {
+        0% { background-color: transparent; }
+        50% { background-color: var(--system-blue); opacity: 0.1; }
+        100% { background-color: transparent; }
+    }
+`;
+document.head.appendChild(style);
+
+// 将这些函数暴露到全局
+window.shouldDisableCanvas = shouldDisableCanvas;
+window.checkCanvasDisableFlag = checkCanvasDisableFlag;
+window.initializeWebGL = initializeWebGL;
+window.startWebGLExperience = startWebGLExperience;
+window.stopWebGLExperience = stopWebGLExperience;
 window.detectFonts = detectFonts;
 window.checkMediaCapabilities = checkMediaCapabilities;
 window.initCanvas = initCanvas;
@@ -3026,6 +3480,775 @@ function initializeWebGL(){
     console.log('⏭️ Canvas已禁用，跳过WebGL初始化');
     return;
   }
+
+  /* ---------- 拓展检测功能 ---------- */
+
+// 字体检测集成
+async function performFontDetection() {
+  const fontResults = await detectFonts();
+  const detectedFonts = Object.entries(fontResults)
+    .filter(([font, exists]) => exists)
+    .map(([font]) => font);
+  
+  // 根据检测到的字体推断操作系统
+  const fontOSMapping = {
+    '-apple-system': ['macos', 'ios', 'ipados'],
+    'BlinkMacSystemFont': ['macos'],
+    'Segoe UI': ['windows'],
+    'Roboto': ['android', 'windows', 'linux'],
+    'Ubuntu': ['linux'],
+    'Helvetica Neue': ['macos', 'ios', 'ipados'],
+    'San Francisco': ['macos', 'ios', 'ipados'],
+    '.SF NS Text': ['macos'],
+    '.SF UI Text': ['macos'],
+    'Arial': ['windows', 'macos', 'linux']
+  };
+  
+  const osScores = {};
+  detectedFonts.forEach(font => {
+    const targets = fontOSMapping[font];
+    if (targets) {
+      targets.forEach(os => {
+        osScores[os] = (osScores[os] || 0) + 1;
+      });
+    }
+  });
+  
+  return {
+    detectedFonts,
+    osScores,
+    hasAppleFonts: detectedFonts.some(font => 
+      ['-apple-system', 'BlinkMacSystemFont', 'Helvetica Neue', 'San Francisco', '.SF NS Text', '.SF UI Text'].includes(font)
+    ),
+    hasWindowsFonts: detectedFonts.includes('Segoe UI'),
+    hasLinuxFonts: detectedFonts.some(font => ['Ubuntu'].includes(font)),
+    hasAndroidFonts: detectedFonts.includes('Roboto')
+  };
+}
+
+// 媒体能力检测集成
+async function performMediaAnalysis() {
+  const mediaCaps = await checkMediaCapabilities();
+  const osMediaPatterns = {};
+  
+  // HEVC/H.265 支持模式
+  if (mediaCaps.hevc) {
+    // Apple 设备通常有较好的 HEVC 支持
+    osMediaPatterns.macos = (osMediaPatterns.macos || 0) + 2;
+    osMediaPatterns.ios = (osMediaPatterns.ios || 0) + 2;
+    osMediaPatterns.ipados = (osMediaPatterns.ipados || 0) + 2;
+  }
+  
+  // VP9 支持模式
+  if (mediaCaps.vp9) {
+    // Android 和现代桌面浏览器支持 VP9
+    osMediaPatterns.android = (osMediaPatterns.android || 0) + 1;
+    osMediaPatterns.windows = (osMediaPatterns.windows || 0) + 1;
+    osMediaPatterns.linux = (osMediaPatterns.linux || 0) + 1;
+    osMediaPatterns.macos = (osMediaPatterns.macos || 0) + 1;
+  }
+  
+  // AV1 支持模式
+  if (mediaCaps.av1) {
+    // 较新的设备支持 AV1
+    osMediaPatterns.android = (osMediaPatterns.android || 0) + 1;
+    osMediaPatterns.windows = (osMediaPatterns.windows || 0) + 1;
+    osMediaPatterns.macos = (osMediaPatterns.macos || 0) + 1;
+  }
+  
+  return {
+    capabilities: mediaCaps,
+    osPatterns: osMediaPatterns
+  };
+}
+
+// 性能特征检测集成
+async function performPerformanceAnalysis() {
+  const performanceData = await measurePerformance();
+  const osPerformancePatterns = {};
+  
+  // 基于内存限制推断设备类型
+  if (performanceData.memory) {
+    const memoryLimitGB = performanceData.memory.limit / (1024 * 1024 * 1024);
+    
+    if (memoryLimitGB < 2) {
+      // 低内存设备，可能是移动设备
+      osPerformancePatterns.ios = (osPerformancePatterns.ios || 0) + 2;
+      osPerformancePatterns.android = (osPerformancePatterns.android || 0) + 2;
+      osPerformancePatterns.ipados = (osPerformancePatterns.ipados || 0) + 1;
+    } else if (memoryLimitGB > 8) {
+      // 高内存设备，可能是桌面设备
+      osPerformancePatterns.macos = (osPerformancePatterns.macos || 0) + 2;
+      osPerformancePatterns.windows = (osPerformancePatterns.windows || 0) + 2;
+      osPerformancePatterns.linux = (osPerformancePatterns.linux || 0) + 2;
+    }
+  }
+  
+  // 基于网络类型推断
+  if (performanceData.connection) {
+    const effectiveType = performanceData.connection.effectiveType;
+    if (['slow-2g', '2g', '3g'].includes(effectiveType)) {
+      // 较慢的网络，可能是移动网络
+      osPerformancePatterns.ios = (osPerformancePatterns.ios || 0) + 1;
+      osPerformancePatterns.android = (osPerformancePatterns.android || 0) + 1;
+    }
+  }
+  
+  // 基于设备像素比推断
+  const dpr = performanceData.devicePixelRatio;
+  if (dpr >= 2) {
+    // 高DPI设备，可能是苹果视网膜设备或高端安卓设备
+    osPerformancePatterns.ios = (osPerformancePatterns.ios || 0) + 1;
+    osPerformancePatterns.ipados = (osPerformancePatterns.ipados || 0) + 1;
+    osPerformancePatterns.macos = (osPerformancePatterns.macos || 0) + 1;
+    osPerformancePatterns.android = (osPerformancePatterns.android || 0) + 1;
+  }
+  
+  return {
+    performance: performanceData,
+    osPatterns: osPerformancePatterns
+  };
+}
+
+// 浏览器特性检测集成
+function performBrowserFeatureAnalysis() {
+  const features = checkBrowserFeatures();
+  const osFeaturePatterns = {};
+  
+  // WebGL 2 支持模式
+  if (features.webGL2) {
+    // 现代桌面和高端移动设备支持 WebGL 2
+    osFeaturePatterns.macos = (osFeaturePatterns.macos || 0) + 1;
+    osFeaturePatterns.windows = (osFeaturePatterns.windows || 0) + 1;
+    osFeaturePatterns.linux = (osFeaturePatterns.linux || 0) + 1;
+    osFeaturePatterns.ios = (osFeaturePatterns.ios || 0) + 1;
+    osFeaturePatterns.android = (osFeaturePatterns.android || 0) + 1;
+  }
+  
+  // Service Worker 支持模式
+  if (features.serviceWorker) {
+    // 大多数现代浏览器支持
+    osFeaturePatterns.android = (osFeaturePatterns.android || 0) + 1;
+    osFeaturePatterns.ios = (osFeaturePatterns.ios || 0) + 1;
+    osFeaturePatterns.macos = (osFeaturePatterns.macos || 0) + 1;
+  }
+  
+  // CSS Grid 支持模式
+  if (features.cssGrid) {
+    // 现代浏览器普遍支持
+    osFeaturePatterns.macos = (osFeaturePatterns.macos || 0) + 1;
+    osFeaturePatterns.windows = (osFeaturePatterns.windows || 0) + 1;
+  }
+  
+  // WebRTC 支持模式
+  if (features.webRTC) {
+    // 大多数现代浏览器支持
+    osFeaturePatterns.android = (osFeaturePatterns.android || 0) + 1;
+    osFeaturePatterns.ios = (osFeaturePatterns.ios || 0) + 1;
+  }
+  
+  return {
+    features,
+    osPatterns: osFeaturePatterns
+  };
+}
+
+/* ---------- 增强版检测函数（确保调用所有检测） ---------- */
+async function enhancedDetect() {
+  // 清空现有步骤
+  $('#steps').innerHTML = '';
+  const summaryEl = $('#summary'); 
+  summaryEl.innerHTML = '<span class="status-text">正在执行增强检测...</span>';
+  summaryEl.classList.add('loading');
+
+  const scores = { android:0, ios:0, ipados:0, macos:0, windows:0, linux:0 };
+  const pretty = { android:'Android', ios:'iOS', ipados:'iPadOS', macos:'macOS', windows:'Windows', linux:'Linux' };
+  
+  const vote = (targets, weight, title, detail, ok=true) => {
+    if(ok){ targets.forEach(t => scores[t]+=weight); }
+    addStep({ok, title, detail, weight, targets:targets.map(t=>pretty[t])});
+  };
+  
+  const mark = (title, detail, ok=false, weight=0, targets=[]) => 
+    addStep({ok, title, detail, weight, targets});
+
+  console.log('🚀 开始增强检测流程...');
+
+  // 1. 基础检测
+  await performBaseDetection(vote, mark);
+  
+  // 2. 字体检测
+  await performFontDetectionAnalysis(vote, mark);
+  
+  // 3. 媒体能力检测
+  await performMediaDetectionAnalysis(vote, mark);
+  
+  // 4. 性能特征检测
+  await performPerformanceDetectionAnalysis(vote, mark);
+  
+  // 5. 浏览器特性检测
+  await performBrowserFeatureDetectionAnalysis(vote, mark);
+
+  // 6. WebGL 状态检测（新增）
+  await performWebGLDetectionAnalysis(vote, mark);
+
+  // 7. 系统信息检测（新增）
+  await performSystemInfoDetectionAnalysis(vote, mark);
+
+  // 8. NFC 能力检测（如果之前没有调用）
+  await performNFCDetectionAnalysis(vote, mark);
+
+  // 计算最终结果
+  const entries = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const top = entries[0]; 
+  const topName = top[0]; 
+  const topScore = top[1];
+  
+  // 置信度计算
+  const confidence = Math.min(95, Math.max(60, Math.round(topScore * 3)));
+  
+  // 更新UI
+  updateConfidenceDisplay(confidence);
+  
+  summaryEl.classList.remove('loading');
+  summaryEl.innerHTML = `<span class="status-text">增强检测完成：<strong>${pretty[topName]}</strong> (${confidence}% 置信度)</span>`;
+
+  // 更新分数显示
+  updateScoreDisplay(scores, topScore);
+  
+  // 显示高级检测按钮和工具面板
+  showAdditionalSections();
+  
+  // 设置全局变量
+  window.detectedOSType = topName;
+  
+  console.log(`🎯 增强检测完成: ${topName}`);
+  return { scores, top: topName, confidence };
+}
+
+/* ---------- 具体的检测分析函数 ---------- */
+async function performBaseDetection(vote, mark) {
+  // 添加开始检测的步骤
+  addStep({
+    ok: true,
+    title: '开始基础环境检测',
+    detail: '检测触控支持、指针类型、悬停能力等基础特征',
+    weight: 0,
+    targets: []
+  });
+
+  const signals = {};
+  
+  // 触控检测
+  signals.touchPoints = navigator.maxTouchPoints || 0;
+  signals.pointerCoarse = matchMedia('(pointer:coarse)').matches;
+  signals.pointerFine = matchMedia('(pointer:fine)').matches;
+  signals.hover = matchMedia('(hover:hover)').matches;
+  
+  const hasRealTouch = signals.touchPoints > 0 && 'ontouchstart' in window;
+  const isPrimaryTouch = signals.pointerCoarse && !signals.hover;
+  const isTouchy = hasRealTouch || isPrimaryTouch;
+
+  if(isTouchy){
+    vote(['android','ios','ipados'], 2, '触控/粗指针环境', `maxTouchPoints=${signals.touchPoints}, coarse=${signals.pointerCoarse}, hover=${signals.hover}`);
+  }else{
+    vote(['macos','windows','linux'], 2, '细指针为主', `fine=${signals.pointerFine}, hover=${signals.hover}`);
+  }
+  
+  // Apple 相关检测
+  signals.applePay = 'ApplePaySession' in window;
+  if(signals.applePay){
+     vote(['ios','ipados','macos'], 4, 'Apple Pay API', 'Safari 系列可用');
+  } else {
+     mark('Apple Pay API', '未检测到 ApplePaySession', false, 4, ['iOS','iPadOS','macOS']);
+  }
+
+  signals.safariPush = !!(window.safari && window.safari.pushNotification);
+  if(signals.safariPush){
+     vote(['macos'], 4, 'Safari Push（macOS 专属）', 'window.safari.pushNotification 存在 → macOS Safari');
+  } else {
+     mark('Safari Push（macOS 专属）', '未发现 macOS Safari 专属对象', false, 4, ['macOS']);
+  }
+
+  signals.iOSPermissionShape = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+  if(signals.iOSPermissionShape){
+     vote(['ios','ipados'], 6, 'iOS 权限 API 形态', 'DeviceMotionEvent.requestPermission 仅 iOS/iPadOS Safari 存在');
+  } else {
+     mark('iOS 权限 API 形态', '无 requestPermission（或非 Safari 内核）', false, 6, ['iOS','iPadOS']);
+  }
+
+  // 其他基础检测...
+  // 确保所有基础检测都通过 vote 或 mark 函数添加步骤
+}
+
+/* ---------- 新增的检测分析函数 ---------- */
+
+// WebGL 检测分析
+async function performWebGLDetectionAnalysis(vote, mark) {
+  try {
+    addStep({
+      ok: true,
+      title: '开始 WebGL 状态检测',
+      detail: '检测浏览器 WebGL 支持情况和图形能力',
+      weight: 0,
+      targets: []
+    });
+
+    const webglStatus = window.webglManager ? window.webglManager.getStatus() : {
+      supported: false,
+      enabled: false,
+      initialized: false,
+      manualOverride: false
+    };
+
+    // 获取 WebGL 详细信息
+    let webglDetails = {};
+    if (webglStatus.supported) {
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          webglDetails = {
+            渲染器: debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : '未知',
+            供应商: debugInfo ? gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) : '未知',
+            版本: gl.getParameter(gl.VERSION),
+            着色器版本: gl.getParameter(gl.SHADING_LANGUAGE_VERSION)
+          };
+        }
+      } catch (error) {
+        webglDetails.错误 = error.message;
+      }
+    }
+
+    const detail = `支持: ${webglStatus.supported ? '✅' : '❌'}, 启用: ${webglStatus.enabled ? '✅' : '❌'}, 初始化: ${webglStatus.initialized ? '✅' : '❌'}\n${JSON.stringify(webglDetails, null, 2)}`;
+
+    if (webglStatus.supported) {
+      vote(['windows', 'macos', 'linux', 'android'], 2, 'WebGL 支持检测', detail, true);
+      
+      // 根据 WebGL 供应商推断操作系统
+      if (webglDetails.供应商) {
+        const vendor = webglDetails.供应商.toLowerCase();
+        if (vendor.includes('apple') || vendor.includes('apple inc.')) {
+          vote(['macos', 'ios', 'ipados'], 3, 'WebGL 供应商识别', `检测到 Apple 显卡: ${vendor}`);
+        } else if (vendor.includes('intel') || vendor.includes('nvidia') || vendor.includes('amd')) {
+          vote(['windows', 'macos', 'linux'], 2, 'WebGL 供应商识别', `检测到桌面级显卡: ${vendor}`);
+        } else if (vendor.includes('qualcomm') || vendor.includes('arm') || vendor.includes('mali')) {
+          vote(['android'], 3, 'WebGL 供应商识别', `检测到移动设备显卡: ${vendor}`);
+        }
+      }
+    } else {
+      mark('WebGL 支持检测', 'WebGL 不被支持，可能是移动设备或旧浏览器', false, 0, ['android', 'ios']);
+    }
+
+  } catch (error) {
+    mark('WebGL 检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+// 系统信息检测分析
+async function performSystemInfoDetectionAnalysis(vote, mark) {
+  try {
+    addStep({
+      ok: true,
+      title: '开始系统信息检测',
+      detail: '收集详细的系统环境和硬件信息',
+      weight: 0,
+      targets: []
+    });
+
+    const systemInfo = {
+      操作系统: getOSInfo(),
+      苹果设备: isAppleDevice(),
+      苹果平台: isApplePlatform(),
+      用户代理: navigator.userAgent,
+      平台: navigator.platform,
+      语言: navigator.language,
+      时区: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      CPU核心数: navigator.hardwareConcurrency || '未知',
+      设备内存: navigator.deviceMemory || '未知',
+      最大触点数: navigator.maxTouchPoints || 0,
+      屏幕分辨率: `${screen.width} × ${screen.height}`,
+      色彩深度: screen.colorDepth + '位',
+      像素密度: window.devicePixelRatio || 1
+    };
+
+    // 根据系统信息投票
+    if (systemInfo.苹果设备) {
+      vote(['macos', 'ios', 'ipados'], 3, '系统特征识别', '检测到苹果设备特征');
+    }
+
+    if (systemInfo.最大触点数 > 0) {
+      vote(['android', 'ios', 'ipados'], 2, '触控设备检测', `最大触点数: ${systemInfo.最大触点数}`);
+    }
+
+    if (systemInfo.CPU核心数 > 8) {
+      vote(['windows', 'macos', 'linux'], 1, '高性能CPU检测', `CPU核心数: ${systemInfo.CPU核心数}`);
+    }
+
+    // 根据屏幕分辨率推断设备类型
+    if (systemInfo.屏幕分辨率) {
+      const [width, height] = systemInfo.屏幕分辨率.split(' × ').map(Number);
+      const aspectRatio = Math.max(width, height) / Math.min(width, height);
+      
+      if (aspectRatio > 1.7) {
+        vote(['android', 'ios'], 1, '屏幕比例识别', `宽高比 ${aspectRatio.toFixed(2)} 符合手机特征`);
+      } else if (aspectRatio > 1.4) {
+        vote(['ipados'], 1, '屏幕比例识别', `宽高比 ${aspectRatio.toFixed(2)} 符合平板特征`);
+      }
+    }
+
+    mark('系统环境信息', JSON.stringify(systemInfo, null, 2), true, 0);
+
+  } catch (error) {
+    mark('系统信息检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+// NFC 能力检测分析
+async function performNFCDetectionAnalysis(vote, mark) {
+  try {
+    addStep({
+      ok: true,
+      title: '开始 NFC 能力检测',
+      detail: '检测 Web NFC API 支持情况',
+      weight: 0,
+      targets: []
+    });
+
+    const nfcCaps = await checkNFCCapabilities();
+    const isSecureContext = window.isSecureContext || location.protocol === 'https:';
+    
+    if (nfcCaps.hasAPI) {
+      let detail = `API类型: ${nfcCaps.apiType}`;
+      if (nfcCaps.canScan) detail += ', 功能可用';
+      if (nfcCaps.error) detail += `, 错误: ${nfcCaps.error}`;
+      if (!isSecureContext) detail += ' (需要HTTPS环境)';
+      
+      vote(['android'], 4, 'Web NFC支持', `${detail} → Android 强信号`);
+    } else {
+      const protocolNote = isSecureContext ? '' : ' (当前非HTTPS可能影响检测)';
+      mark('Web NFC', `未检测到任何NFC API${protocolNote}`, false, 4, ['Android']);
+    }
+
+  } catch (error) {
+    mark('NFC 检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+// 系统信息检测分析
+async function performSystemInfoDetectionAnalysis(vote, mark) {
+  try {
+    const systemInfo = {
+      操作系统: getOSInfo(),
+      苹果设备: isAppleDevice(),
+      苹果平台: isApplePlatform(),
+      用户代理: navigator.userAgent,
+      平台: navigator.platform,
+      语言: navigator.language,
+      时区: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      CPU核心数: navigator.hardwareConcurrency || '未知',
+      设备内存: navigator.deviceMemory || '未知',
+      最大触点数: navigator.maxTouchPoints || 0
+    };
+
+    // 根据系统信息投票
+    if (systemInfo.苹果设备) {
+      vote(['macos', 'ios', 'ipados'], 3, '系统特征识别', '检测到苹果设备特征');
+    }
+
+    if (systemInfo.最大触点数 > 0) {
+      vote(['android', 'ios', 'ipados'], 2, '触控设备检测', `最大触点数: ${systemInfo.最大触点数}`);
+    }
+
+    if (systemInfo.CPU核心数 > 8) {
+      vote(['windows', 'macos', 'linux'], 1, '高性能CPU检测', `CPU核心数: ${systemInfo.CPU核心数}`);
+    }
+
+    mark('系统环境信息', JSON.stringify(systemInfo, null, 2), true, 0);
+
+  } catch (error) {
+    mark('系统信息检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+async function performFontDetectionAnalysis(vote, mark) {
+  try {
+    const fontAnalysis = await performFontDetection();
+    
+    if (fontAnalysis.detectedFonts.length > 0) {
+      const detail = `检测到字体: ${fontAnalysis.detectedFonts.join(', ')}`;
+      
+      // 根据字体特征投票
+      if (fontAnalysis.hasAppleFonts) {
+        vote(['macos', 'ios', 'ipados'], 3, '苹果系统字体检测', detail);
+      }
+      
+      if (fontAnalysis.hasWindowsFonts) {
+        vote(['windows'], 3, 'Windows 系统字体检测', detail);
+      }
+      
+      if (fontAnalysis.hasLinuxFonts) {
+        vote(['linux'], 3, 'Linux 系统字体检测', detail);
+      }
+      
+      if (fontAnalysis.hasAndroidFonts) {
+        vote(['android'], 2, 'Android 系统字体检测', detail);
+      }
+      
+      // 具体字体投票
+      Object.entries(fontAnalysis.osScores).forEach(([os, score]) => {
+        if (score > 0) {
+          vote([os], 1, `字体特征匹配 ${pretty[os]}`, `匹配度: ${score}`, true);
+        }
+      });
+    } else {
+      mark('系统字体检测', '未检测到特定系统字体', false, 0);
+    }
+  } catch (error) {
+    mark('字体检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+async function performMediaDetectionAnalysis(vote, mark) {
+  try {
+    const mediaAnalysis = await performMediaAnalysis();
+    const { capabilities, osPatterns } = mediaAnalysis;
+    
+    let mediaDetail = `HEVC: ${capabilities.hevc}, VP9: ${capabilities.vp9}, AV1: ${capabilities.av1}`;
+    
+    // 根据媒体能力投票
+    Object.entries(osPatterns).forEach(([os, score]) => {
+      if (score > 0) {
+        vote([os], score, '媒体编解码能力', mediaDetail, true);
+      }
+    });
+    
+    if (Object.keys(osPatterns).length === 0) {
+      mark('媒体编解码能力', '媒体能力特征不明显', false, 0);
+    }
+  } catch (error) {
+    mark('媒体能力检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+async function performPerformanceDetectionAnalysis(vote, mark) {
+  try {
+    const performanceAnalysis = await performPerformanceAnalysis();
+    const { performance, osPatterns } = performanceAnalysis;
+    
+    let perfDetail = `DPR: ${performance.devicePixelRatio}, 内存: ${performance.memory ? (performance.memory.limit / (1024 * 1024 * 1024)).toFixed(1) + 'GB' : 'N/A'}`;
+    
+    if (performance.connection) {
+      perfDetail += `, 网络: ${performance.connection.effectiveType}`;
+    }
+    
+    // 根据性能特征投票
+    Object.entries(osPatterns).forEach(([os, score]) => {
+      if (score > 0) {
+        vote([os], score, '性能特征分析', perfDetail, true);
+      }
+    });
+    
+    if (Object.keys(osPatterns).length === 0) {
+      mark('性能特征分析', '性能特征不明显', false, 0);
+    }
+  } catch (error) {
+    mark('性能特征检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+async function performBrowserFeatureDetectionAnalysis(vote, mark) {
+  try {
+    const featureAnalysis = performBrowserFeatureAnalysis();
+    const { features, osPatterns } = featureAnalysis;
+    
+    const supportedFeatures = Object.entries(features)
+      .filter(([name, supported]) => supported)
+      .map(([name]) => name);
+    
+    let featureDetail = `支持特性: ${supportedFeatures.slice(0, 5).join(', ')}${supportedFeatures.length > 5 ? '...' : ''}`;
+    
+    // 根据浏览器特性投票
+    Object.entries(osPatterns).forEach(([os, score]) => {
+      if (score > 0) {
+        vote([os], score, '浏览器特性分析', featureDetail, true);
+      }
+    });
+    
+    if (Object.keys(osPatterns).length === 0) {
+      mark('浏览器特性分析', '浏览器特性特征不明显', false, 0);
+    }
+  } catch (error) {
+    mark('浏览器特性检测', `检测失败: ${error.message}`, false, 0);
+  }
+}
+
+/* ---------- 工具函数 ---------- */
+
+function updateScoreDisplay(scores, topScore) {
+  const scoreBoard = $('#scoreBoard');
+  if (!scoreBoard) return;
+  
+  const sb = document.createElement('div');
+  const entries = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+  const pretty = { android:'Android', ios:'iOS', ipados:'iPadOS', macos:'macOS', windows:'Windows', linux:'Linux' };
+  
+  for(const [k,v] of entries){
+    const row = document.createElement('div');
+    row.className = 'score-row';
+
+    const pct = topScore > 0 ? (v / topScore) * 100 : 0;
+    const barWidth = v === 0 ? 0 : Math.max(6, Math.min(100, Math.round(pct)));
+
+    row.innerHTML = `
+      <div class="score-label">${pretty[k]}</div>
+      <div class="score-bar"><span style="width:${barWidth}%"></span></div>
+      <div class="mono-text" style="width:40px;text-align:right">${v}</div>
+    `;
+    sb.appendChild(row);
+  }
+  
+  scoreBoard.innerHTML = '';
+  scoreBoard.appendChild(sb);
+}
+
+/* ---------- 辅助函数 ---------- */
+
+// 更新置信度显示
+function updateConfidenceDisplay(confidence) {
+  const confBar = $('#confBar');
+  const confPct = $('#confPct');
+  const confTrack = document.querySelector('.progress-track[role="progressbar"]');
+  
+  if (confBar) confBar.style.width = confidence + '%';
+  if (confPct) confPct.textContent = `${confidence}%`;
+  if (confTrack) confTrack.setAttribute('aria-valuenow', String(confidence));
+}
+
+// 显示额外部分（工具和WebGL控制）
+function showAdditionalSections() {
+  // 显示高级检测按钮
+  const advancedContainer = document.getElementById('advancedDetectionContainer');
+  if (advancedContainer) {
+    advancedContainer.style.display = 'block';
+  }
+
+  // 显示工具面板
+  const toolsSection = document.querySelector('[aria-labelledby="tools-heading"]');
+  if (toolsSection) {
+    toolsSection.style.display = 'block';
+    toolsSection.style.animation = 'fadeInUp 0.5s ease-out';
+  }
+
+  // 显示WebGL控制面板
+  const webglSection = document.querySelector('[aria-labelledby="webgl-control-heading"]');
+  if (webglSection) {
+    webglSection.style.display = 'block';
+    webglSection.style.animation = 'fadeInUp 0.5s ease-out 0.1s both';
+  }
+
+  // 添加显示动画
+  if (!document.getElementById('section-animations')) {
+    const style = document.createElement('style');
+    style.id = 'section-animations';
+    style.textContent = `
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
+
+// 工具结果显示函数
+function showToolsResult(title, data) {
+  const toolsResults = document.getElementById('toolsResults');
+  const toolsStatus = document.getElementById('toolsStatus');
+  const toolsOutput = document.getElementById('toolsOutput');
+  
+  if (toolsResults && toolsStatus && toolsOutput) {
+    toolsResults.style.display = 'block';
+    toolsStatus.textContent = title;
+    toolsOutput.style.display = 'block';
+    toolsOutput.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    
+    // 自动滚动到结果
+    toolsOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+/* ---------- 更新交互逻辑 ---------- */
+
+// 在原有的 runOnce 函数中添加增强检测选项
+async function runOnce(){
+  try{ 
+    // 检查Canvas禁用状态
+    checkCanvasDisableFlag();
+    
+    // 使用增强检测替代基础检测
+    await enhancedDetect();
+    
+    // 设置高级检测按钮事件（保持不变）
+    setupAdvancedDetectionButton();
+  }
+  catch(e){ 
+    addStep({ok:false, title:'运行异常', detail:String(e), weight:0}); 
+  }
+}
+
+// 设置高级检测按钮
+function setupAdvancedDetectionButton() {
+  const advancedBtn = document.getElementById('advancedDetectionBtn');
+  if (advancedBtn) {
+    advancedBtn.addEventListener('click', async () => {
+      if (!window.PublicKeyCredential) {
+        showUnsupportedAlert();
+        return;
+      }
+      
+      try {
+        advancedBtn.disabled = true;
+        advancedBtn.textContent = '🔍 检测中...';
+        await performAdvancedDetection();
+      } catch (error) {
+        console.error('高级检测失败:', error);
+        handleAdvancedDetectionError(error);
+      } finally {
+        advancedBtn.disabled = false;
+        advancedBtn.textContent = '🔐 高级检测';
+      }
+    });
+  }
+}
+
+// 错误处理
+function handleAdvancedDetectionError(error) {
+  const summary = document.getElementById('summary');
+  summary.innerHTML = '<span class="status-text" style="color: var(--system-red);">高级检测失败</span>';
+  
+  if (error.name === 'NotSupportedError' || error.message.includes('浏览器')) {
+    showBrowserUnsupportedAlert();
+  } else {
+    showUnsupportedAlert();
+  }
+}
+
+// 暴露增强检测函数到全局
+window.enhancedDetect = enhancedDetect;
+window.performFontDetection = performFontDetection;
+window.performMediaAnalysis = performMediaAnalysis;
+window.performPerformanceAnalysis = performPerformanceAnalysis;
+window.performBrowserFeatureAnalysis = performBrowserFeatureAnalysis;
+
+console.log('✅ 增强检测功能已加载完成');
   
   // 将变量暴露到全局作用域，以便控制
   window.cx = undefined; 

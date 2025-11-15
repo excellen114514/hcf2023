@@ -735,6 +735,80 @@ window.getOSInfo = getOSInfo;
 window.checkBrowserFeatures = checkBrowserFeatures;
 window.measurePerformance = measurePerformance;
 
+
+/* ---------- 系统工具自动执行一遍 ---------- */
+async function runSystemToolsAnalysis() {
+    const result = {};
+
+    // 字体
+    const fonts = await detectFonts();
+    result.fonts = fonts;
+
+    // 媒体
+    const media = await checkMediaCapabilities();
+    result.media = media;
+
+    // 性能
+    const perf = await measurePerformance();
+    result.performance = perf;
+
+    // 浏览器特性
+    const features = checkBrowserFeatures();
+    result.features = features;
+
+    // OS 初步判断
+    result.osInfo = getOSInfo();
+    result.isAppleDevice = isAppleDevice();
+
+    return result;
+}
+/* ---------- 系统工具信号评估函数 ---------- */
+//计入到总可信度中
+function evaluateSystemToolsSignals(tool) {
+    const votes = [];
+
+    // --- 字体推断 ---
+    const f = tool.fonts;
+    if (f['San Francisco'] || f['-apple-system']) {
+        votes.push({targets:['ios','ipados','macos'], weight:4, title:'字体特征', detail:'检测到 Apple 字体'});
+    }
+    if (f['Segoe UI']) {
+        votes.push({targets:['windows'], weight:4, title:'字体特征', detail:'检测到 Segoe UI'});
+    }
+    if (f['Roboto']) {
+        votes.push({targets:['android'], weight:4, title:'字体特征', detail:'检测到 Roboto'});
+    }
+
+    // --- 媒体能力 ---
+    if (tool.media.vp9 === true && tool.media.hevc === false) {
+        votes.push({targets:['windows','linux','android'], weight:2, title:'媒体能力', detail:'VP9 支持明显'});
+    }
+    if (tool.media.hevc === true && tool.media.vp9 === false) {
+        votes.push({targets:['macos','ios','ipados'], weight:2, title:'媒体能力', detail:'HEVC 优势'});
+    }
+
+    // --- 浏览器特性 ---
+    if (tool.features.webGL && !tool.features.serviceWorker) {
+        votes.push({targets:['ios','ipados'], weight:1, title:'浏览器特征', detail:'存在 Safari 特征组合'});
+    }
+
+    // --- OS 基础判断 ---
+    const os = tool.osInfo;
+    if (os === 'android') votes.push({targets:['android'], weight:3, title:'OS 基础', detail:'navigator.userAgent → Android'});
+    if (os === 'macos') votes.push({targets:['macos'], weight:3, title:'OS 基础', detail:'navigator → macOS'});
+    if (os === 'ios') votes.push({targets:['ios'], weight:3, title:'OS 基础', detail:'UA → iOS'});
+    if (os === 'ipados') votes.push({targets:['ipados'], weight:3, title:'OS 基础', detail:'UA → iPadOS'});
+
+    // --- Apple 判断 ---
+    if (tool.isAppleDevice) {
+        votes.push({targets:['ios','ipados','macos'], weight:3, title:'设备家族', detail:'Apple 设备特征'}); 
+    }
+
+    return votes;
+}
+
+
+
 /* ---------- NFC能力检测 ---------- */
 async function checkNFCCapabilities(){
   const result = { hasAPI: false, apiType: '', canScan: false, error: null };
@@ -935,6 +1009,79 @@ async function detect(){
   /* --- 媒体栈检测已移除 --- */
   let mediaCaps = await checkMediaCapabilities();
   // HEVC和VP9检测已移除
+ /* --- 自动系统工具执行（带权重展示） --- */
+
+// 1) 起始步骤
+addStep({
+    ok: true,
+    title: "开始执行系统工具",
+    detail: "字体检测 / 媒体能力 / 性能指标 / 浏览器特性 / OS 初始判断",
+    weight: 0
+});
+
+// 2) 执行全部前端系统工具
+const toolResults = await runSystemToolsAnalysis();
+
+// 3) 在步骤栏记录每个工具的执行情况
+addStep({
+    ok: true,
+    title: "字体工具已执行",
+    detail: `检测到字体数：${Object.values(toolResults.fonts).filter(Boolean).length}`,
+    weight: 1
+});
+
+addStep({
+    ok: true,
+    title: "媒体能力工具已执行",
+    detail: `HEVC=${toolResults.media.hevc}, VP9=${toolResults.media.vp9}, AV1=${toolResults.media.av1}`,
+    weight: 1
+});
+
+addStep({
+    ok: true,
+    title: "性能评估已执行",
+    detail: `DPR=${toolResults.performance.devicePixelRatio}, 内存=${toolResults.performance.memory ? '可用' : '不可用'}`,
+    weight: 1
+});
+
+addStep({
+    ok: true,
+    title: "浏览器特性工具已执行",
+    detail: `WebGL=${toolResults.features.webGL}, ServiceWorker=${toolResults.features.serviceWorker}`,
+    weight: 1
+});
+
+// 4) 将工具检测结果转换为判定“系统信号”
+const toolVotes = evaluateSystemToolsSignals(toolResults);
+
+// 5) 系统工具总贡献权重（用于最终展示）
+let totalToolWeight = 0;
+
+// 6) 为每个工具信号添加 Step（带权重标签）并参与真实计分
+for (const v of toolVotes) {
+    totalToolWeight += v.weight;
+
+    addStep({
+        ok: true,
+        title: `系统工具：${v.title}`,
+        detail: v.detail,
+        weight: v.weight,           // ←← 让用户看到权重
+        targets: v.targets.map(t => pretty[t])
+    });
+
+    // 将权重加入评分系统
+    vote(v.targets, v.weight, `系统工具：${v.title}`, v.detail, true);
+}
+
+// 7) 收尾提示
+addStep({
+    ok: true,
+    title: "系统工具执行完成",
+    detail: `工具总权重贡献：${totalToolWeight} 分`,
+    weight: 0
+});
+
+
 
   /* --- 置信度计算与展示（含平分时 UA 二次判定） --- */
   const entries = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
@@ -3845,6 +3992,7 @@ async function performWebGLDetectionAnalysis(vote, mark) {
     mark('WebGL 检测', `检测失败: ${error.message}`, false, 0);
   }
 }
+
 
 // 系统信息检测分析
 async function performSystemInfoDetectionAnalysis(vote, mark) {

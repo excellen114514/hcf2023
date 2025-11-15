@@ -6,6 +6,11 @@
 
 由于原网站已无法访问，故开此 Github 仓库用于留档
 
+暂定该Fork为**MHGA** 
+> *MAKE HCF GREAT AGAIN*
+
+纪念hcf2023，以及hcf2023.top
+
 __仅做技术交流使用，请谨慎使用！！！__
 
 
